@@ -7,6 +7,7 @@ import {
   GridFilterModel,
   useGridApiRef,
   GridColumnVisibilityModel,
+  GridFilterItem,
 } from '@mui/x-data-grid-pro';
 import Export from './Export';
 
@@ -58,11 +59,26 @@ function applyFilter(rowData: any[], filterModel: any): any[] {
 }
 
 export default function App() {
-  const [sortModel, setSortModel] = React.useState<GridSortModel>([]);
-  const [filterModel, setFilterModel] = React.useState<GridFilterModel>({ items: [] });
-  const [columnVisibilityModel, setColumnVisibilityModel] = React.useState<GridColumnVisibilityModel>({
-    lastName: false     // Hide the 'lastName' column
-  });
+  const initialHiddenColumns = {
+    lastName: false,     // Hide the 'lastName' column,
+  };
+
+  const getDataFromLocalStorage = (type: string): any => {
+      const storedData = localStorage.getItem("SampleData") && JSON.parse(localStorage.getItem("SampleData")!);
+      if(type === "filterModel") {
+        return storedData ? storedData[type] : [];
+      } else if(type === "orderedFields") {
+        return storedData ? storedData[type] : [];
+      }  else if(type === "columnVisibilityModel") {
+        return storedData ? storedData[type] : initialHiddenColumns;
+      }  else if(type === "sortModel") {
+        return storedData ? storedData[type] : [];
+      }
+  }
+
+  const [filterModel, setFilterModel] = React.useState<GridFilterModel>({ items: getDataFromLocalStorage("filterModel")});
+  const [sortModel, setSortModel] = React.useState<GridSortModel>(getDataFromLocalStorage("sortModel"));
+  const [columnVisibilityModel, setColumnVisibilityModel] = React.useState<GridColumnVisibilityModel>();
   const apiRef = useGridApiRef();
 
   const getDownloadData = (): [Array<Record<string, string>>, Array<Record<string, string>>] => {
@@ -119,9 +135,23 @@ export default function App() {
 
     const headers = visibleColumns.map((col) => { return { header: col.headerName || col.field, field: col.field } });
 
+    console.log(apiRef.current.state);
+
     return [headers, rowDataArray];
     
   }
+
+  const changeInTable = () => {
+    if (!apiRef.current) return;
+    localStorage.setItem("SampleData", JSON.stringify({
+      columnVisibilityModel: apiRef.current.state.columns.columnVisibilityModel,
+      orderedFields: apiRef.current.state.columns.orderedFields,
+      sortModel: apiRef.current.state.sorting.sortModel,
+      filterModel: apiRef.current.state.filter.filterModel.items
+    }));
+  }
+
+
 
   return (
     <div style={{ height: "100%", width: '100%' }}>
@@ -133,11 +163,38 @@ export default function App() {
         rows={rows}
         columns={columns}
         sortModel={sortModel}
-        onSortModelChange={setSortModel}
+        onSortModelChange={(newModel) => {
+          setSortModel(newModel);
+          setTimeout(() => {
+            changeInTable();
+          })
+        }}
         filterModel={filterModel}
-        onFilterModelChange={setFilterModel}
+        onFilterModelChange={(filterModel) => {
+          setFilterModel(filterModel);
+          setTimeout(() => {
+            changeInTable();
+          })
+        }}
         columnVisibilityModel={columnVisibilityModel}
-        onColumnVisibilityModelChange={setColumnVisibilityModel}
+        onColumnVisibilityModelChange={(visibilityModel) => {
+          setColumnVisibilityModel(visibilityModel)
+          setTimeout(() => {
+            changeInTable();
+          })
+        }}
+        onColumnOrderChange={() => {
+          changeInTable();
+        }}
+        initialState={{
+          columns: {
+            columnVisibilityModel:  getDataFromLocalStorage("columnVisibilityModel"),
+            orderedFields: getDataFromLocalStorage("orderedFields")
+          },
+          sorting: {
+            sortModel: getDataFromLocalStorage("sortModel")
+          }
+        }}
       />
     </div>
   );
