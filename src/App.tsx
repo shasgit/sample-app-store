@@ -10,6 +10,8 @@ import {
   GridFilterItem,
 } from '@mui/x-data-grid-pro';
 import Export from './Export';
+import IconButton from '@mui/material/IconButton';
+import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 
 const columns: GridColDef[] = [
   { field: 'id', headerName: 'ID', width: 70 },
@@ -18,6 +20,13 @@ const columns: GridColDef[] = [
   { field: 'country', headerName: 'Country', width: 70 },
   { field: 'department', headerName: 'Department', width: 150 },
   { field: 'salary', headerName: 'Salary', width: 150 },
+  {
+    field: 'toggle',
+    headerName: 'On/Off',
+    width: 100,
+    sortable: false,
+    filterable: false,
+  }
 ];
 
 const rows: GridRowsProp = [
@@ -44,7 +53,7 @@ function applyFilter(rowData: any[], filterModel: any): any[] {
 
       const cellValueStr = cellValue == null ? '' : String(cellValue);
 
-      switch (operator) {
+      switch (operator) { 
         case 'contains':
           return cellValueStr.toLowerCase().includes(value.toLowerCase());
         case 'equals':
@@ -80,6 +89,36 @@ export default function App() {
   const [sortModel, setSortModel] = React.useState<GridSortModel>(getDataFromLocalStorage("sortModel"));
   const [columnVisibilityModel, setColumnVisibilityModel] = React.useState<GridColumnVisibilityModel>();
   const apiRef = useGridApiRef();
+
+  // Track the on/off states in a separate state object keyed by row id
+  const [toggleStates, setToggleStates] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    if (!apiRef.current) return;
+
+    // Update only the 'toggle' column's renderCell, preserving the current column order.
+    apiRef.current.updateColumns([{
+      field: 'toggle',
+      renderCell: (params) => {
+        const { id } = params;
+        const isOn = !!toggleStates[id];
+        return (
+          <IconButton
+            aria-label="toggle"
+            onClick={(event) => {
+              event.stopPropagation();
+              setToggleStates((prev) => ({
+                ...prev,
+                [id]: !isOn,
+              }));
+            }}
+          >
+            <PowerSettingsNewIcon style={{ color: isOn ? 'green' : 'red' }} />
+          </IconButton>
+        );
+      },
+    }]);
+  }, [toggleStates, apiRef]);
 
   const getDownloadData = (): [Array<Record<string, string>>, Array<Record<string, string>>] => {
     if (!apiRef.current) return[[],[]];
